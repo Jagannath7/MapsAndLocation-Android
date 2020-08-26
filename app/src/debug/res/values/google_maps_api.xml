@@ -12,7 +12,8 @@
     com.example.mapsandlocation
 
     SHA-1 certificate fingerprint:
-    //add your sha fingerprint
+    //add your fingerprint here
+
 
     Alternatively, follow the directions here:
     https://developers.google.com/maps/documentation/android/start#get-key
