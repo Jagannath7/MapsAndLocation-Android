@@ -1,11 +1,20 @@
 package com.example.mapsandlocation
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.DialogInterface
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.Settings
+import android.provider.SettingsSlicesContract
 import android.widget.Toast
 import android.widget.Toast.LENGTH_SHORT
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -18,6 +27,9 @@ import com.google.android.gms.maps.model.PolylineOptions
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
+    val locationManager by lazy {
+        getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    }
     private lateinit var mMap: GoogleMap
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,7 +46,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onStart()
         when{
             isLocationGranted() ->{
-                setUpLocationListener()
+                when{
+                    isLocationEnabled()-> setUpLocationListener()
+                    else -> showGPSnotEnabled()
+                }
             }else->{
             requestFineLocation()
         }
@@ -56,12 +71,46 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun setUpLocationListener() {
+
+        val providers = locationManager.getProviders(true)
+
+        var l: Location? = null
+        for (i in providers.indices.reversed()) {
+            l = locationManager.getLastKnownLocation(providers[i])
+            if (l != null) break
+        }
+
+        l?.let {
+            if (::mMap.isInitialized) {
+                val current = LatLng(it.latitude, it.longitude)
+                mMap.addMarker(MarkerOptions().position(current).title("Marker in Current Are"))
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(current))
+            }
+        }
 
     }
 
     fun isLocationGranted(): Boolean {
         return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    fun isLocationEnabled(): Boolean{
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }
+
+    fun showGPSnotEnabled() {
+        AlertDialog.Builder(this)
+            .setTitle("Enable GPS")
+            .setMessage("GPS is required")
+            .setCancelable(false)
+            .setPositiveButton("Enable Now"){dialogInterface:DialogInterface, i ->
+                startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                dialogInterface.dismiss()
+            }
+            .show()
     }
 
     private fun requestFineLocation() {
